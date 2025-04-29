@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mini Dashboard de Trade</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #121212;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .data {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .card {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 12px;
+      width: 30%;
+      min-width: 250px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #1e1e1e;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    canvas {
+      background: #fff;
+      margin-top: 30px;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    #alerta {
+      font-size: 1.5em;
+      text-align: center;
+      margin-top: 30px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🚀 Mini Dashboard de Trade: BTC x Altcoins</h1>
+
+<div class="data">
+  <div class="card" id="btc-price">Preço BTC: carregando...</div>
+  <div class="card" id="btc-dominance">Dominância BTC: carregando...</div>
+  <div class="card" id="altcoin-volume">Volume Altcoins: carregando...</div>
+</div>
+
+<div id="alerta">⏳ Carregando análise...</div>
+
+<section id="checklist">
+  <h2>📋 Checklist de Trade</h2>
+  <ul id="trade-checklist">
+    <li><input type="checkbox" id="check-price"> Bitcoin acima de suporte importante? (>$50.000)</li>
+    <li><input type="checkbox" id="check-dominance"> Dominância BTC está caindo? (<50%)</li>
+    <li><input type="checkbox" id="check-volume"> Volume de Altcoins está subindo? (>$400B)</li>
+  </ul>
+</section>
+
+<canvas id="dominanceChart" width="400" height="200"></canvas>
+
+<script>
+  async function fetchData() {
+    const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+    const globalData = await globalResponse.json();
+    
+    const priceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const priceData = await priceResponse.json();
+
+    const btcPrice = priceData.bitcoin.usd;
+    const btcDominance = globalData.data.market_cap_percentage.btc;
+    const totalMarketCap = globalData.data.total_market_cap.usd;
+    const altcoinVolume = totalMarketCap * (1 - btcDominance / 100);
+
+    document.getElementById('btc-price').innerText = `Preço BTC: $${btcPrice.toLocaleString()}`;
+    document.getElementById('btc-dominance').innerText = `Dominância BTC: ${btcDominance.toFixed(2)}%`;
+    document.getElementById('altcoin-volume').innerText = `Volume Altcoins: $${Math.round(altcoinVolume).toLocaleString()}`;
+
+    updateChecklist(btcPrice, btcDominance, altcoinVolume);
+  }
+
+  function updateChecklist(btcPrice, btcDominance, altcoinVolume) {
+    const check1 = btcPrice > 50000;
+    const check2 = btcDominance < 50;
+    const check3 = altcoinVolume > 400_000_000_000;
+
+    document.getElementById('check-price').checked = check1;
+    document.getElementById('check-dominance').checked = check2;
+    document.getElementById('check-volume').checked = check3;
+
+    const alerta = document.getElementById('alerta');
+    if (check1 && check2 && check3) {
+      alerta.innerText = '🚀 SINAL POSITIVO: Mercado favorável para Altcoins!';
+      alerta.style.color = '#00FF88';
+    } else {
+      alerta.innerText = '⏳ Aguardando sinais alinhados para entrada ideal...';
+      alerta.style.color = '#FF5555';
+    }
+  }
+
+  function createChart() {
+    const ctx = document.getElementById('dominanceChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['7d atrás', '6d', '5d', '4d', '3d', '2d', 'Hoje'],
+        datasets: [{
+          label: 'Dominância BTC (%)',
+          backgroundColor: 'rgba(0,123,255,0.5)',
+          borderColor: 'rgba(0,123,255,1)',
+          data: [52, 51.5, 50.8, 50.2, 49.8, 49.1, 48.7]
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            labels: { color: 'white' }
+          }
+        },
+        scales: {
+          x: { ticks: { color: 'white' }},
+          y: { ticks: { color: 'white' }}
+        }
+      }
+    });
+  }
+
+  function initializeDashboard() {
+    fetchData();
+    createChart();
+    setInterval(fetchData, 300000); // Atualiza a cada 5 minutos
+  }
+
+  initializeDashboard();
+</script>
+
+</body>
+</html>
